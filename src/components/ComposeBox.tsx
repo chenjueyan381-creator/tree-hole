@@ -47,7 +47,7 @@ export function ComposeBox({ onPosted }: ComposeBoxProps) {
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="写下此刻无人知晓的心事……"
+        placeholder="写点什么…"
         maxLength={CONTENT_MAX_LENGTH + 50}
         rows={4}
         className="compose-textarea"
@@ -58,9 +58,9 @@ export function ComposeBox({ onPosted }: ComposeBoxProps) {
         </span>
         <div className="compose-actions">
           {error && <span className="compose-error">{error}</span>}
-          {justPosted && <span className="compose-success">已投入树洞 ✓</span>}
+          {justPosted && <span className="compose-success">已发布</span>}
           <button type="submit" disabled={!canSubmit} className="compose-submit">
-            {submitting ? '投递中…' : '匿名投递'}
+            {submitting ? '发布中…' : '发布'}
           </button>
         </div>
       </div>

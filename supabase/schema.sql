@@ -2,6 +2,10 @@
 -- 在 Supabase 控制台 -> SQL Editor 中粘贴并运行整段脚本
 -- （anon key 权限不足以建表，必须用控制台或拥有数据库密码的连接执行一次）
 
+-- 如果你已经执行过旧版本（标签文案已改），且表里还没有正式数据，
+-- 想重新初始化的话，先取消注释下面这行再执行本文件：
+-- drop table if exists public.confessions cascade;
+
 create extension if not exists pgcrypto;
 
 create table if not exists public.confessions (
@@ -12,8 +16,8 @@ create table if not exists public.confessions (
     '#22c55e', '#eab308', '#ef4444', '#3b82f6'
   )),
   tag text not null check (tag in (
-    '深夜独白', '匿名信', '漂流瓶', '秘密',
-    '呐喊', '低语', '心事', '告白'
+    '随笔', '深夜', '路过', '小事',
+    '碎碎念', '随手记', '心情', '无题'
   )),
   created_at timestamptz not null default now()
 );

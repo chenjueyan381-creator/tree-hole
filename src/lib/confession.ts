@@ -10,14 +10,14 @@ export const CONFESSION_COLORS = [
 ] as const
 
 export const CONFESSION_TAGS = [
-  '深夜独白',
-  '匿名信',
-  '漂流瓶',
-  '秘密',
-  '呐喊',
-  '低语',
-  '心事',
-  '告白',
+  '随笔',
+  '深夜',
+  '路过',
+  '小事',
+  '碎碎念',
+  '随手记',
+  '心情',
+  '无题',
 ] as const
 
 export const CONTENT_MAX_LENGTH = 500

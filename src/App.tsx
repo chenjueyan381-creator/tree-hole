@@ -55,21 +55,19 @@ function App() {
 
       <header className="page-header">
         <h1>树洞</h1>
-        <p className="page-subtitle">写下无人回应的心事，像一封漂流瓶抛入夜色</p>
+        <p className="page-subtitle">匿名留言 · 谁都能看见 · 没人能回复</p>
       </header>
 
       <main className="page-main">
         <ComposeBox onPosted={fetchConfessions} />
 
         <section className="feed">
-          {loading && <p className="feed-status">正在打捞漂流瓶…</p>}
+          {loading && <p className="feed-status">加载中…</p>}
           {!loading && loadError && (
-            <p className="feed-status feed-status--error">
-              树洞暂时听不见了，请稍后刷新再试
-            </p>
+            <p className="feed-status feed-status--error">加载失败，请刷新重试</p>
           )}
           {!loading && !loadError && confessions.length === 0 && (
-            <p className="feed-status">这里还很安静，写下第一段心事吧</p>
+            <p className="feed-status">还没有人留言</p>
           )}
           {!loading &&
             confessions.map((confession) => (
@@ -79,7 +77,7 @@ function App() {
       </main>
 
       <footer className="page-footer">
-        <p>完全匿名 · 无法编辑或删除 · 请勿留下可识别身份的信息</p>
+        <p>内容匿名发布，无法编辑或删除</p>
       </footer>
     </div>
   )
