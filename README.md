@@ -65,6 +65,72 @@ npm run dev
    - `VITE_SUPABASE_ANON_KEY` = 你的 anon / publishable key
 4. Deploy
 
+## 4. 部署到 GitHub Pages（可选，与 Vercel 互不影响）
+
+仓库里已经配好了 [`.github/workflows/deploy-pages.yml`](./.github/workflows/deploy-pages.yml)，
+推送到 `main` 或开发分支就会自动构建并发布。首次使用需要做两件事：
+
+### 4.1 添加两个 secret
+
+**Settings → Secrets and variables → Actions → New repository secret**，添加：
+
+| Name | Value |
+| --- | --- |
+| `VITE_SUPABASE_URL` | `https://rumdtkhukjiyegagmrbj.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | 你的 anon / publishable key |
+
+Vite 在**构建时**就把这两个值内联进产物，所以必须在 Actions 里提供，缺了会直接构建失败
+并提示缺哪个（而不是默默部署一个打不开的页面）。
+
+> 顺带说明：anon key 本来就是设计给浏览器用的公开 key，无论怎么部署它都会出现在打包产物里，
+> 任何人都能从 JS 里读到 —— 这不是泄漏。真正的防线是数据库的 RLS 策略。用 secret 只是
+> 避免它出现在 git 历史里（这个仓库是 public 的）。
+
+### 4.2 把 Pages 的来源改成 Actions
+
+**Settings → Pages → Build and deployment → Source** 选 **GitHub Actions**（不是
+"Deploy from a branch"）。不改这个的话，workflow 会在最后一步报错。
+
+改完之后推一次代码，或者到 **Actions → Deploy to GitHub Pages → Run workflow** 手动跑一次。
+站点地址是：
+
+```
+https://chenjueyan381-creator.github.io/tree-hole/
+```
+
+管理入口一样：加 `#admin`，或者连点标题 5 次。
+
+### 关于 base 路径
+
+Pages 的项目站点跑在 `/<仓库名>/` 子路径下，Vercel 跑在根路径，两者的资源前缀不一样。
+所以 `vite.config.ts` 里的 `base` 是条件化的：只有 workflow 里设了 `GITHUB_PAGES=true`
+才加子路径前缀，其他情况（本地开发、Vercel）一律用 `/`。**你现有的 Vercel 部署不受任何影响。**
+
+仓库名是从 Actions 注入的 `GITHUB_REPOSITORY` 里取的，所以以后仓库改名也不用回来改配置。
+
+### ⚠️ 国内访问
+
+`*.github.io` 和 `*.vercel.app` 一样，在中国大陆是被墙的。换到 GitHub Pages **不能**解决
+国内打不开的问题，它只是多一个免费的备用部署。想要国内能访问，见下面的说明。
+
+## 关于国内访问
+
+这个项目有两个境外依赖，**任意一个不通站点就用不了**：
+
+- 前端：`*.vercel.app` / `*.github.io` —— 大陆均被墙
+- 数据：`*.supabase.co` —— 大陆同样不稳定
+
+排查时先分别确认：直接在浏览器打开 `https://<你的项目>.supabase.co/rest/v1/`，
+返回 JSON 报错说明通，连不上说明也被墙了。页面能打开但一直卡在「加载中」= 前端通、Supabase 不通。
+
+| 方案 | 能解决 | 代价 |
+| --- | --- | --- |
+| 绑自定义域名到 Vercel | 只解决前端 | 域名约 ¥50/年；通常有效但不保证 |
+| 香港/新加坡 VPS，前后端都自建 | 两个都解决 | ¥40-100/月；**不需要 ICP 备案** |
+| 国内云（阿里云/腾讯云） | 两个都解决，最快 | 必须 ICP 备案，1-3 周；匿名 UGC 站点合规上有额外要求 |
+
+Supabase 本身开源，可以用 docker-compose 自建，前端只需改 `.env` 里那两个变量。
+
 ## 关于安全性
 
 匿名树洞天然是「谁都能写」的，所以这里把能收紧的地方都收紧了：
