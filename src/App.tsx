@@ -12,9 +12,14 @@ const PAGE_SIZE = 100
 const HEADLINE = '希望你天天开心'
 const HEADLINE_CELL = 16
 
-/** 隐蔽入口：右下角连点这么多次唤出登录框 */
+/**
+ * 隐蔽入口：连点标题这么多次唤出登录框。
+ *
+ * 原来放在右下角，但那里在手机上很难点：iOS 的边缘手势区和 Safari 底部工具栏都在那，
+ * 系统会把连点吃掉。标题面积大、离边缘远，好按得多，而且一样不显眼。
+ */
 const SECRET_CLICKS = 5
-const SECRET_WINDOW = 2500
+const SECRET_WINDOW = 5000
 
 function App() {
   const [confessions, setConfessions] = useState<Confession[]>([])
@@ -102,13 +107,16 @@ function App() {
       )}
 
       <header className="page-header">
-        <PixelText
-          text={HEADLINE}
-          cell={HEADLINE_CELL}
-          scale={headlineScale}
-          color="#3d3226"
-          className="headline"
-        />
+        {/* 标题本身就是隐蔽的管理入口，连点 5 次 */}
+        <div className="headline-hit" onClick={handleSecretClick}>
+          <PixelText
+            text={HEADLINE}
+            cell={HEADLINE_CELL}
+            scale={headlineScale}
+            color="#3d3226"
+            className="headline"
+          />
+        </div>
         <p className="page-subtitle">匿名树洞 · 说给树听</p>
       </header>
 
@@ -138,9 +146,6 @@ function App() {
       <footer className="page-footer">
         <p>内容匿名发布，无法编辑</p>
       </footer>
-
-      {/* 隐蔽的管理入口：右下角一小块透明区域，连点 5 次 */}
-      <div className="secret-corner" onClick={handleSecretClick} aria-hidden="true" />
 
       {showLogin && (
         <AdminLoginModal

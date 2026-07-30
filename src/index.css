@@ -442,14 +442,13 @@ body {
   letter-spacing: 0.08em;
 }
 
-/* 隐蔽入口：右下角一小块透明热区，视觉上完全看不出来 */
-.secret-corner {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  width: 48px;
-  height: 48px;
-  z-index: 40;
+/* 隐蔽入口：标题本身可点。视觉上没有任何提示，但比放在屏幕角落好按得多。
+   touch-action: manipulation 是关键 —— 否则 iOS Safari 会把连点判定成
+   双击缩放，吞掉一部分 click 事件。 */
+.headline-hit {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   cursor: default;
 }
 
