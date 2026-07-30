@@ -1,51 +1,152 @@
 -- 匿名树洞网站 数据库结构
--- 在 Supabase 控制台 -> SQL Editor 中粘贴并运行整段脚本
--- （anon key 权限不足以建表，必须用控制台或拥有数据库密码的连接执行一次）
+-- 在 Supabase 控制台 -> SQL Editor 中粘贴并运行整段脚本。
+-- 本脚本是幂等的：可以重复执行，会自动把旧版本的表升级到最新结构。
 
--- 如果你已经执行过旧版本（标签文案已改），且表里还没有正式数据，
--- 想重新初始化的话，先取消注释下面这行再执行本文件：
--- drop table if exists public.confessions cascade;
+-- ============================================================
+-- 管理员账号：必须先在 Supabase 控制台手动创建
+-- ============================================================
+-- Authentication -> Users -> Add user -> Create new user
+--   Email:    xiaojue@treehole.app     （固定，下面的 RLS 策略按这个邮箱判定管理员）
+--   Password: 111913
+--   勾选 "Auto Confirm User"（否则需要邮箱验证才能登录）
+--
+-- 前端登录框输入的是用户名 xiaojue，代码里会自动拼成上面这个邮箱。
+--
+-- 另外建议关闭公开注册，否则任何人都能注册账号：
+--   Authentication -> Providers -> Email -> 关闭 "Enable sign ups"
 
 create extension if not exists pgcrypto;
 
+-- ============================================================
+-- 树洞内容
+-- ============================================================
+
 create table if not exists public.confessions (
   id uuid primary key default gen_random_uuid(),
-  content text not null check (char_length(content) between 1 and 500),
-  color text not null check (color in (
-    '#f97316', '#ec4899', '#8b5cf6', '#06b6d4',
-    '#22c55e', '#eab308', '#ef4444', '#3b82f6'
-  )),
-  tag text not null check (tag in (
-    '随笔', '深夜', '路过', '小事',
-    '碎碎念', '随手记', '心情', '无题'
-  )),
+  content text not null,
+  color text not null,
+  tag text not null,
   created_at timestamptz not null default now()
 );
+
+-- 约束单独声明，方便重复执行时更新为最新的取值范围。
+-- 用 not valid 只校验新写入的行，避免历史数据导致升级失败。
+alter table public.confessions
+  drop constraint if exists confessions_content_length;
+alter table public.confessions
+  add constraint confessions_content_length
+  check (char_length(content) between 1 and 500) not valid;
+
+alter table public.confessions
+  drop constraint if exists confessions_color_allowed;
+alter table public.confessions
+  add constraint confessions_color_allowed
+  check (color in (
+    '#e8643c', '#f0977a', '#e0a32e', '#7fa650',
+    '#3f9e8c', '#4a7fb5', '#8b6bb0', '#d4568c'
+  )) not valid;
+
+alter table public.confessions
+  drop constraint if exists confessions_tag_allowed;
+alter table public.confessions
+  add constraint confessions_tag_allowed
+  check (tag in (
+    '随笔', '深夜', '路过', '小事',
+    '碎碎念', '随手记', '心情', '无题'
+  )) not valid;
 
 create index if not exists confessions_created_at_idx
   on public.confessions (created_at desc);
 
-alter table public.confessions enable row level security;
+-- ============================================================
+-- 匿名回复
+-- ============================================================
 
--- 任何人（包括未登录的匿名访客）都可以读取全部内容
+create table if not exists public.replies (
+  id uuid primary key default gen_random_uuid(),
+  -- on delete cascade：删除一条内容会连带删掉它下面所有回复
+  confession_id uuid not null
+    references public.confessions (id) on delete cascade,
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.replies
+  drop constraint if exists replies_content_length;
+alter table public.replies
+  add constraint replies_content_length
+  check (char_length(content) between 1 and 300) not valid;
+
+create index if not exists replies_confession_id_idx
+  on public.replies (confession_id, created_at);
+
+-- ============================================================
+-- RLS：匿名可读可写，只有管理员可删
+-- ============================================================
+
+alter table public.confessions enable row level security;
+alter table public.replies enable row level security;
+
+-- 任何人（包括未登录访客）都可以读取全部内容和回复
 drop policy if exists "Public can read confessions" on public.confessions;
 create policy "Public can read confessions"
-  on public.confessions
-  for select
+  on public.confessions for select
   to anon, authenticated
   using (true);
 
--- 任何人都可以匿名发布一条新内容
+drop policy if exists "Public can read replies" on public.replies;
+create policy "Public can read replies"
+  on public.replies for select
+  to anon, authenticated
+  using (true);
+
+-- 任何人都可以匿名发布内容和回复
 drop policy if exists "Public can insert confessions" on public.confessions;
 create policy "Public can insert confessions"
-  on public.confessions
-  for insert
+  on public.confessions for insert
   to anon, authenticated
   with check (true);
 
--- 不创建 update / delete 策略：
--- 开启 RLS 后没有对应策略 = 任何人都无法修改或删除已发布的内容（包括发布者本人），
--- 符合"不能回复/不能编辑"的树洞设定。
+drop policy if exists "Public can insert replies" on public.replies;
+create policy "Public can insert replies"
+  on public.replies for insert
+  to anon, authenticated
+  with check (true);
 
--- 可选：开启 Realtime，让新投递的内容实时推送到所有在线用户
-alter publication supabase_realtime add table public.confessions;
+-- 只有管理员这一个账号可以删除。
+-- 注意这里限定到具体邮箱，而不是笼统的 authenticated —— 否则任何注册用户都能删。
+drop policy if exists "Admin can delete confessions" on public.confessions;
+create policy "Admin can delete confessions"
+  on public.confessions for delete
+  to authenticated
+  using (auth.jwt() ->> 'email' = 'xiaojue@treehole.app');
+
+drop policy if exists "Admin can delete replies" on public.replies;
+create policy "Admin can delete replies"
+  on public.replies for delete
+  to authenticated
+  using (auth.jwt() ->> 'email' = 'xiaojue@treehole.app');
+
+-- 没有创建任何 UPDATE 策略，所以内容和回复发布后都无法被修改（包括管理员）。
+-- 管理员只有"删除"这一种干预手段。
+
+-- ============================================================
+-- Realtime：新内容/新回复/删除实时推送给所有在线用户
+-- ============================================================
+
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.confessions;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.replies;
+  exception when duplicate_object then null;
+  end;
+end $$;
+
+-- 删除事件默认只推送主键。设为 full 才能在前端收到被删行的完整内容，
+-- 这里其实只需要 id，但设成 full 更省心。
+alter table public.confessions replica identity full;
+alter table public.replies replica identity full;

@@ -1,61 +1,115 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import type { Confession } from './lib/confession'
+import { useAdminSession } from './hooks/useAdminSession'
 import { ComposeBox } from './components/ComposeBox'
 import { ConfessionCard } from './components/ConfessionCard'
+import { AdminLoginModal } from './components/AdminLoginModal'
+import { PixelText } from './components/PixelText'
+import { Xiaoke } from './components/Xiaoke'
 
 const PAGE_SIZE = 100
+const HEADLINE = '希望你天天开心'
+const HEADLINE_CELL = 16
+
+/** 隐蔽入口：右下角连点这么多次唤出登录框 */
+const SECRET_CLICKS = 5
+const SECRET_WINDOW = 2500
 
 function App() {
   const [confessions, setConfessions] = useState<Confession[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+  const { isAdmin, signOut } = useAdminSession()
 
   const fetchConfessions = useCallback(async () => {
     const { data, error } = await supabase
       .from('confessions')
-      .select('id, content, color, tag, created_at')
+      .select(
+        'id, content, color, tag, created_at, replies(id, confession_id, content, created_at)',
+      )
       .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true, referencedTable: 'replies' })
       .limit(PAGE_SIZE)
 
     if (error) {
       setLoadError(true)
     } else {
       setLoadError(false)
-      setConfessions(data ?? [])
+      setConfessions((data ?? []) as Confession[])
     }
     setLoading(false)
   }, [])
 
+  // Realtime：内容和回复的任何变动都重新拉一次列表。
+  // 比在客户端手动合并 insert/delete 事件简单得多，也不容易出错。
   useEffect(() => {
     fetchConfessions()
 
+    let timer: number | undefined
+    const refetchSoon = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(fetchConfessions, 150)
+    }
+
     const channel = supabase
-      .channel('confessions-feed')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'confessions' },
-        (payload) => {
-          const incoming = payload.new as Confession
-          setConfessions((prev) =>
-            prev.some((c) => c.id === incoming.id) ? prev : [incoming, ...prev],
-          )
-        },
-      )
+      .channel('tree-hole-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'confessions' }, refetchSoon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'replies' }, refetchSoon)
       .subscribe()
 
     return () => {
+      window.clearTimeout(timer)
       supabase.removeChannel(channel)
     }
   }, [fetchConfessions])
 
+  // 标题按整数倍放大，非整数倍会让像素点变模糊
+  const [headlineScale, setHeadlineScale] = useState(4)
+  useEffect(() => {
+    const intrinsic = HEADLINE.length * (HEADLINE_CELL + 2) - 2
+    const calc = () => {
+      const avail = Math.min(window.innerWidth - 32, 640)
+      setHeadlineScale(Math.max(2, Math.min(4, Math.floor(avail / intrinsic))))
+    }
+    calc()
+    window.addEventListener('resize', calc)
+    return () => window.removeEventListener('resize', calc)
+  }, [])
+
+  const clicks = useRef<number[]>([])
+  const handleSecretClick = () => {
+    const now = Date.now()
+    clicks.current = [...clicks.current, now].filter((t) => now - t < SECRET_WINDOW)
+    if (clicks.current.length >= SECRET_CLICKS) {
+      clicks.current = []
+      if (!isAdmin) setShowLogin(true)
+    }
+  }
+
   return (
     <div className="page">
-      <div className="page-glow" aria-hidden="true" />
+      <Xiaoke />
+
+      {isAdmin && (
+        <div className="admin-bar">
+          <span className="admin-bar-text">管理员模式</span>
+          <button type="button" onClick={signOut} className="px-btn px-btn--ghost px-btn--sm">
+            退出
+          </button>
+        </div>
+      )}
 
       <header className="page-header">
-        <h1>树洞</h1>
-        <p className="page-subtitle">匿名留言 · 谁都能看见 · 没人能回复</p>
+        <PixelText
+          text={HEADLINE}
+          cell={HEADLINE_CELL}
+          scale={headlineScale}
+          color="#3d3226"
+          className="headline"
+        />
+        <p className="page-subtitle">匿名树洞 · 说给树听</p>
       </header>
 
       <main className="page-main">
@@ -71,14 +125,29 @@ function App() {
           )}
           {!loading &&
             confessions.map((confession) => (
-              <ConfessionCard key={confession.id} confession={confession} />
+              <ConfessionCard
+                key={confession.id}
+                confession={confession}
+                isAdmin={isAdmin}
+                onChanged={fetchConfessions}
+              />
             ))}
         </section>
       </main>
 
       <footer className="page-footer">
-        <p>内容匿名发布，无法编辑或删除</p>
+        <p>内容匿名发布，无法编辑</p>
       </footer>
+
+      {/* 隐蔽的管理入口：右下角一小块透明区域，连点 5 次 */}
+      <div className="secret-corner" onClick={handleSecretClick} aria-hidden="true" />
+
+      {showLogin && (
+        <AdminLoginModal
+          onClose={() => setShowLogin(false)}
+          onSuccess={() => setShowLogin(false)}
+        />
+      )}
     </div>
   )
 }
