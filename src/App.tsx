@@ -93,6 +93,20 @@ function App() {
     }
   }
 
+  // 备用入口：网址带 #admin 直接弹登录框。
+  // 连点手势在不同设备上总有意外，这条路不依赖任何触摸行为，一定能进。
+  // 入口好不好找不影响安全：密码校验在 Supabase Auth，删除权限由 RLS 判定。
+  useEffect(() => {
+    const check = () => {
+      if (window.location.hash.toLowerCase() === '#admin' && !isAdmin) {
+        setShowLogin(true)
+      }
+    }
+    check()
+    window.addEventListener('hashchange', check)
+    return () => window.removeEventListener('hashchange', check)
+  }, [isAdmin])
+
   return (
     <div className="page">
       <Xiaoke />
@@ -107,8 +121,16 @@ function App() {
       )}
 
       <header className="page-header">
-        {/* 标题本身就是隐蔽的管理入口，连点 5 次 */}
-        <div className="headline-hit" onClick={handleSecretClick}>
+        {/* 标题本身就是隐蔽的管理入口，连点 5 次。
+            必须用 button 而不是 div：iOS Safari 对非交互元素的 click 冒泡有历史遗留
+            问题，普通 div 上的连点可能根本不触发。button 是原生可点元素，不受影响。 */}
+        <button
+          type="button"
+          className="headline-hit"
+          onClick={handleSecretClick}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
           <PixelText
             text={HEADLINE}
             cell={HEADLINE_CELL}
@@ -116,7 +138,7 @@ function App() {
             color="#3d3226"
             className="headline"
           />
-        </div>
+        </button>
         <p className="page-subtitle">匿名树洞 · 说给树听</p>
       </header>
 

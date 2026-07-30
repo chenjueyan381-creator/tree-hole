@@ -446,10 +446,22 @@ body {
    touch-action: manipulation 是关键 —— 否则 iOS Safari 会把连点判定成
    双击缩放，吞掉一部分 click 事件。 */
 .headline-hit {
+  /* 是个 button，但要看起来完全不像按钮 */
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: default;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  cursor: default;
+}
+
+.headline-hit:focus {
+  outline: none;
 }
 
 .modal-backdrop {
