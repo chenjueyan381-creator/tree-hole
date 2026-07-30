@@ -1,0 +1,76 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/anonymous-tree-hole-site-90xvfb
+  # 允许在 Actions 页面手动点按钮触发一次部署
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时刻只保留一个部署；连续推送时取消还在跑的旧构建，避免旧版本后发先至
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Vite 在构建时就把 VITE_* 变量内联进产物，缺了的话会打出一个一开就报错的站点。
+      # 与其部署一个坏掉的页面，不如在这里直接失败并说清楚原因。
+      - name: Check required secrets
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::error::缺少 secret VITE_SUPABASE_URL"
+            missing=1
+          fi
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::缺少 secret VITE_SUPABASE_ANON_KEY"
+            missing=1
+          fi
+          if [ "$missing" = "1" ]; then
+            echo "::error::请到仓库 Settings → Secrets and variables → Actions 添加上面缺失的 secret，然后重新运行本 workflow。"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          # 让 vite.config.ts 把 base 设成 /<仓库名>/
+          GITHUB_PAGES: 'true'
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
