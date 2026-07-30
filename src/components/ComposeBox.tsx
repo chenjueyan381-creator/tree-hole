@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { CONTENT_MAX_LENGTH, randomColor, randomTag } from '../lib/confession'
+import { describeWriteError } from '../lib/errors'
 
 interface ComposeBoxProps {
   onPosted?: () => void
@@ -32,7 +33,9 @@ export function ComposeBox({ onPosted }: ComposeBoxProps) {
     setSubmitting(false)
 
     if (insertError) {
-      setError('投递失败，请稍后再试')
+      // 完整对象留给控制台，界面上给一句人话
+      console.error('[树洞] 发布失败', insertError)
+      setError(describeWriteError(insertError))
       return
     }
 
@@ -57,13 +60,14 @@ export function ComposeBox({ onPosted }: ComposeBoxProps) {
           {remaining}
         </span>
         <div className="compose-actions">
-          {error && <span className="compose-error">{error}</span>}
           {justPosted && <span className="compose-success">已发布</span>}
           <button type="submit" disabled={!canSubmit} className="compose-submit">
             {submitting ? '发布中…' : '发布'}
           </button>
         </div>
       </div>
+      {/* 错误单独占一行：原因可能很长，挤在按钮旁边会被截断 */}
+      {error && <p className="compose-error">{error}</p>}
     </form>
   )
 }

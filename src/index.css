@@ -236,8 +236,14 @@ body {
 }
 
 .compose-error {
+  margin: 10px 0 0;
+  padding: 8px 10px;
   font-size: 12px;
+  line-height: 1.6;
   color: var(--danger);
+  background: rgba(209, 80, 60, 0.08);
+  border: 2px solid var(--danger);
+  word-break: break-word;
 }
 
 .compose-success {

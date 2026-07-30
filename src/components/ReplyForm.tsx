@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { REPLY_MAX_LENGTH } from '../lib/confession'
+import { describeWriteError } from '../lib/errors'
 
 interface ReplyFormProps {
   confessionId: string
@@ -31,7 +32,8 @@ export function ReplyForm({ confessionId, onPosted, onCancel }: ReplyFormProps) 
     setSubmitting(false)
 
     if (insertError) {
-      setError('回复失败，请稍后再试')
+      console.error('[树洞] 回复失败', insertError)
+      setError(describeWriteError(insertError))
       return
     }
 
