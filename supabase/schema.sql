@@ -7,7 +7,7 @@
 -- ============================================================
 -- Authentication -> Users -> Add user -> Create new user
 --   Email:    xiaojue2026@gmail.com   （必须和下面 RLS 策略里的邮箱完全一致）
---   Password: 111913
+--   Password: 你自己设定的密码（不写在代码里，由 Supabase Auth 加盐哈希保存）
 --   勾选 "Auto Confirm User"（否则需要邮箱验证才能登录）
 --
 -- 前端登录框填完整邮箱即可（只填 xiaojue2026 也行，会自动补 @gmail.com）。
