@@ -8,7 +8,7 @@ React + Supabase 实现的匿名树洞。像素风界面，暖色调背景，页
 - 匿名发布：任何人无需登录即可发一段话
 - 匿名回复：每条内容下面可以匿名回复，回复也不需要登录
 - 按时间倒序展示，每条内容随机分配一个颜色和标签
-- 管理后台：右下角连点 5 次唤出登录框，管理员登录后可以删除任何内容和回复
+- 管理后台：网址加 `#admin`（或连点顶部标题 5 次）唤出登录框，管理员登录后可以删除任何内容和回复
 
 ## 1. 建表 + 创建管理员账号
 
@@ -38,13 +38,19 @@ React + Supabase 实现的匿名树洞。像素风界面，暖色调背景，页
 
 1. Supabase 控制台 → **Authentication → Users → Add user → Create new user**
 2. 填写：
-   - Email：`xiaojue@treehole.app`（**必须是这个**，RLS 策略按这个邮箱判定管理员）
-   - Password：`111913`
+   - Email：`xiaojue2026@gmail.com`（**必须和 `schema.sql` 里 RLS 策略中的邮箱完全一致**，
+     也和 `src/lib/admin.ts` 里的 `ADMIN_EMAIL` 一致）
+   - Password：你自己设定的密码
    - 勾选 **Auto Confirm User**（否则要邮箱验证才能登录）
 3. 建议顺手关掉公开注册：**Authentication → Providers → Email** 里关闭 *Enable sign ups*，
    否则任何人都能自己注册账号
 
-前端登录框里输入的是**用户名 `xiaojue`**，代码会自动拼成上面那个邮箱去登录。
+登录框里填完整邮箱即可；只填 `xiaojue2026` 也行，代码会自动补上 `@gmail.com`。
+
+> ⚠️ **换管理员账号时，三个地方必须一起改**：Supabase 里的账号、`src/lib/admin.ts` 的
+> `ADMIN_EMAIL`、以及 `supabase/schema.sql` 里两条删除策略的邮箱，改完要**重新执行一遍
+> schema.sql**。只改前端不改 SQL 的话，删除会「没有报错但也删不掉」——因为 RLS 拒绝时
+> 返回的是"删除了 0 行"而不是错误。（前端已经会检测这种情况并明确提示。）
 
 ## 2. 本地开发
 

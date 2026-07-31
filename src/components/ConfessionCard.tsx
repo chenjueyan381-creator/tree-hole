@@ -16,26 +16,40 @@ export function ConfessionCard({ confession, isAdmin, onChanged }: ConfessionCar
   const color = safeColor(confession.color)
   const replies = confession.replies ?? []
 
+  /**
+   * RLS 拒绝删除时不会报错，只是「删掉了 0 行」——不带 select() 的话前端完全看不出
+   * 区别，会以为删成功了，刷新后内容还在。所以这里用 select() 拿回被删的行来核对。
+   * 最常见的触发原因：登录的账号和 schema.sql 里 RLS 策略写的邮箱对不上。
+   */
+  async function deleteRow(table: 'confessions' | 'replies', id: string) {
+    const { data, error } = await supabase.from(table).delete().eq('id', id).select('id')
+
+    if (error) {
+      window.alert('删除失败：' + error.message)
+      return false
+    }
+    if (!data || data.length === 0) {
+      window.alert(
+        '删除没有生效。\n\n' +
+          '数据库拒绝了这次删除，通常是当前登录的账号和 schema.sql 里 RLS 策略中的管理员邮箱不一致。\n' +
+          '解决办法：重新执行一遍 supabase/schema.sql。',
+      )
+      return false
+    }
+    return true
+  }
+
   async function deleteConfession() {
     if (!window.confirm('删除这条内容？它下面的回复也会一起删掉，且无法恢复。')) return
     setBusy(true)
-    const { error } = await supabase.from('confessions').delete().eq('id', confession.id)
+    const ok = await deleteRow('confessions', confession.id)
     setBusy(false)
-    if (error) {
-      window.alert('删除失败：' + error.message)
-      return
-    }
-    onChanged()
+    if (ok) onChanged()
   }
 
   async function deleteReply(replyId: string) {
     if (!window.confirm('删除这条回复？')) return
-    const { error } = await supabase.from('replies').delete().eq('id', replyId)
-    if (error) {
-      window.alert('删除失败：' + error.message)
-      return
-    }
-    onChanged()
+    if (await deleteRow('replies', replyId)) onChanged()
   }
 
   return (

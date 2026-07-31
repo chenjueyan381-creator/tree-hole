@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { usernameToEmail } from '../lib/admin'
+import { toLoginEmail } from '../lib/admin'
 
 interface AdminLoginModalProps {
   onClose: () => void
@@ -22,7 +22,7 @@ export function AdminLoginModal({ onClose, onSuccess }: AdminLoginModalProps) {
 
     // 密码校验完全在 Supabase Auth 侧完成，前端不保存任何凭据
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(username),
+      email: toLoginEmail(username),
       password,
     })
 
@@ -53,7 +53,7 @@ export function AdminLoginModal({ onClose, onSuccess }: AdminLoginModalProps) {
 
         <form onSubmit={handleSubmit} className="modal-form">
           <label className="field">
-            <span className="field-label">用户名</span>
+            <span className="field-label">用户名 / 邮箱</span>
             <input
               type="text"
               value={username}

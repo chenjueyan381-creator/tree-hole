@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { ADMIN_USERNAME, usernameToEmail } from '../lib/admin'
+import { ADMIN_EMAIL } from '../lib/admin'
 
 /**
  * 跟踪管理员登录状态。
@@ -29,7 +29,7 @@ export function useAdminSession() {
   }, [])
 
   return {
-    isAdmin: email === usernameToEmail(ADMIN_USERNAME),
+    isAdmin: email === ADMIN_EMAIL,
     signOut: () => supabase.auth.signOut(),
   }
 }

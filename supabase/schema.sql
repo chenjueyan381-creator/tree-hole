@@ -6,11 +6,11 @@
 -- 管理员账号：必须先在 Supabase 控制台手动创建
 -- ============================================================
 -- Authentication -> Users -> Add user -> Create new user
---   Email:    xiaojue@treehole.app     （固定，下面的 RLS 策略按这个邮箱判定管理员）
+--   Email:    xiaojue2026@gmail.com   （必须和下面 RLS 策略里的邮箱完全一致）
 --   Password: 111913
 --   勾选 "Auto Confirm User"（否则需要邮箱验证才能登录）
 --
--- 前端登录框输入的是用户名 xiaojue，代码里会自动拼成上面这个邮箱。
+-- 前端登录框填完整邮箱即可（只填 xiaojue2026 也行，会自动补 @gmail.com）。
 --
 -- 另外建议关闭公开注册，否则任何人都能注册账号：
 --   Authentication -> Providers -> Email -> 关闭 "Enable sign ups"
@@ -119,13 +119,13 @@ drop policy if exists "Admin can delete confessions" on public.confessions;
 create policy "Admin can delete confessions"
   on public.confessions for delete
   to authenticated
-  using (auth.jwt() ->> 'email' = 'xiaojue@treehole.app');
+  using (auth.jwt() ->> 'email' = 'xiaojue2026@gmail.com');
 
 drop policy if exists "Admin can delete replies" on public.replies;
 create policy "Admin can delete replies"
   on public.replies for delete
   to authenticated
-  using (auth.jwt() ->> 'email' = 'xiaojue@treehole.app');
+  using (auth.jwt() ->> 'email' = 'xiaojue2026@gmail.com');
 
 -- 没有创建任何 UPDATE 策略，所以内容和回复发布后都无法被修改（包括管理员）。
 -- 管理员只有"删除"这一种干预手段。
